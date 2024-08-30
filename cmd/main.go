@@ -75,9 +75,6 @@ func main() {
 	for _, r := range results.Results {
 		resultsAny = append(resultsAny, r)
 	}
-	if err != nil {
-		fmt.Println(err)
-	}
 	insertResult, err := collection.InsertMany(context.TODO(), resultsAny)
 	if err != nil {
 		log.Fatal(err)
