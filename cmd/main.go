@@ -18,7 +18,7 @@ import (
 func main() {
 
 	type Name struct {
-		Title string `json:"title"`
+		Title string `json:"title" bson:"title"`
 		First string `json:"first" bson:"first"`
 		Last  string `json:"last" bson:"last"`
 	}
@@ -42,7 +42,7 @@ func main() {
 	for i := 0; i < 5; i++ {
 		wg.Add(1)                                               // Add 1 to the WaitGroup
 		go func(wg *sync.WaitGroup, channel chan interface{}) { // Create a new goroutine with anonymous function
-			time.Sleep(time.Duration(i) * time.Second) // timer to not get status 429 Too Many Requests
+			time.Sleep(time.Duration(1) * time.Second) // timer to not get status 429 Too Many Requests
 			defer wg.Done()
 			url := "https://randomuser.me/api/?inc=name,email,dob"
 			resp, err := http.Get(url)
@@ -87,5 +87,6 @@ func main() {
 		}
 		fmt.Println("Inserted a single document: ", insertResult.InsertedID)
 	}
+
 	wg.Wait()
 }
