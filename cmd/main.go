@@ -16,7 +16,7 @@ import (
 func main() {
 
 	type Name struct {
-		Title string `json:"title"`
+		Title string `json:"title" bson:"title"`
 		First string `json:"first" bson:"first"`
 		Last  string `json:"last" bson:"last"`
 	}
