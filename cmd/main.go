@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -33,26 +35,33 @@ func main() {
 		Results []User `json:"results"`
 	}
 
-	url := "https://randomuser.me/api/?results=5&inc=name,email,dob"
+	var wg sync.WaitGroup = sync.WaitGroup{} // WaitGroup is used to wait for all goroutines to finish
+	var channel = make(chan interface{}, 1)  // Channel is used to communicate between goroutines
+	defer close(channel)
 
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Fatal(err)
+	for i := 0; i < 5; i++ {
+		wg.Add(1)                                               // Add 1 to the WaitGroup
+		go func(wg *sync.WaitGroup, channel chan interface{}) { // Create a new goroutine with anonymous function
+			time.Sleep(time.Duration(i) * time.Second) // timer to not get status 429 Too Many Requests
+			defer wg.Done()
+			url := "https://randomuser.me/api/?inc=name,email,dob"
+			resp, err := http.Get(url)
+			if err != nil {
+				log.Fatal(err)
+			}
+			defer resp.Body.Close()
+			log.Println(resp.Status)
+			results := Results{}
+			decoder := json.NewDecoder(resp.Body)
+			err = decoder.Decode(&results)
+			if err != nil {
+				log.Fatal(err)
+			}
+			channel <- results.Results[0]
+		}(&wg, channel)
 	}
-	defer resp.Body.Close()
 
-	log.Println(resp.Status)
-
-	results := Results{}
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(&results)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println(results)
-
-	err = godotenv.Load()
+	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
@@ -69,18 +78,14 @@ func main() {
 	}
 	log.Println("Connected to MongoDB!")
 	defer client.Disconnect(context.TODO())
-
 	collection := client.Database("stackx").Collection("users")
-	resultsAny := []any{}
-	for _, r := range results.Results {
-		resultsAny = append(resultsAny, r)
+
+	for r := range channel { // Loop over the channel until it is closed
+		insertResult, err := collection.InsertOne(context.TODO(), r)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("Inserted a single document: ", insertResult.InsertedID)
 	}
-	if err != nil {
-		fmt.Println(err)
-	}
-	insertResult, err := collection.InsertMany(context.TODO(), resultsAny)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println("Inserted multiple documents: ", insertResult.InsertedIDs)
+	wg.Wait()
 }
