@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
@@ -30,22 +31,27 @@ type Results struct {
 	Results []User `json:"results"`
 }
 
-func getData() (Results, error) {
-	url := "https://randomuser.me/api/?results=5&inc=name,email,dob"
-	resp, err := http.Get(url)
-	if err != nil {
-		return Results{}, err
+func getData(ctx context.Context) (results Results, error error) {
+	select {
+	case <-ctx.Done():
+		return Results{}, ctx.Err()
+	default:
+		url := "https://randomuser.me/api/?results=5&inc=name,email,dob"
+		resp, err := http.Get(url)
+		if err != nil {
+			return Results{}, err
+		}
+		defer resp.Body.Close()
+		log.Println(resp.Status)
+		results := Results{}
+		decoder := json.NewDecoder(resp.Body)
+		err = decoder.Decode(&results)
+		if err != nil {
+			return results, err
+		}
+		fmt.Println(results)
+		return results, nil
 	}
-	defer resp.Body.Close()
-	log.Println(resp.Status)
-	results := Results{}
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(&results)
-	if err != nil {
-		return results, err
-	}
-	fmt.Println(results)
-	return results, nil
 }
 
 func main() {
@@ -74,7 +80,9 @@ func main() {
 
 func saveInNoSqlDb() error {
 
-	results, err := getData()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	results, err := getData(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -86,19 +94,19 @@ func saveInNoSqlDb() error {
 	fmt.Println(mongoConn)
 
 	clientOpts := options.Client().ApplyURI(mongoConn)
-	client, err := mongo.Connect(context.TODO(), clientOpts)
+	client, err := mongo.Connect(ctx, clientOpts)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Println("Connected to MongoDB!")
-	defer client.Disconnect(context.TODO())
+	defer client.Disconnect(ctx)
 
 	collection := client.Database("stackx").Collection("users")
 	resultsAny := []any{}
 	for _, r := range results.Results {
 		resultsAny = append(resultsAny, r)
 	}
-	insertResult, err := collection.InsertMany(context.TODO(), resultsAny)
+	insertResult, err := collection.InsertMany(ctx, resultsAny)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -109,7 +117,9 @@ func saveInNoSqlDb() error {
 
 func saveInSqlDb() error {
 
-	results, err := getData()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	results, err := getData(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -120,14 +130,14 @@ func saveInSqlDb() error {
 	}
 	fmt.Println(cockroachConn)
 
-	conn, err := pgx.Connect(context.Background(), cockroachConn)
+	conn, err := pgx.Connect(ctx, cockroachConn)
 	if err != nil {
 		return err
 	}
-	defer conn.Close(context.Background())
+	defer conn.Close(ctx)
 
 	for _, r := range results.Results {
-		_, err := conn.Exec(context.Background(), "INSERT INTO users (name, email, dob, age) VALUES ($1, $2, $3, $4)", r.Name.First, r.Email, r.Dob.Date, r.Dob.Age)
+		_, err := conn.Exec(ctx, "INSERT INTO users (name, email, dob, age) VALUES ($1, $2, $3, $4)", r.Name.First, r.Email, r.Dob.Date, r.Dob.Age)
 		if err != nil {
 			return err
 		}
