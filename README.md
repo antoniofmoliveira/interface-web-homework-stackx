@@ -113,7 +113,7 @@ MONGODB_URI="mongodb://user:password@0.0.0.0/?retryWrites=true&w=majority"
 COCKROACHDB_URI="postgresql://user:password@0.0.0.0:0000/stackx?sslmode=disable"
 USE_NOSQL="true"
 ```
-A *Golang 1.23.0* ~home/.local instalation.
+A *Golang 1.23.0* ~/.local instalation.
 
 A venv with *Python 3.12.3*.
 
