@@ -1,0 +1,17 @@
+{
+  "name": "interface_web",
+  "version": "1.0.0",
+  "description": "## Objetivo:",
+  "main": "homework.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "mongodb": "^6.8.0",
+    "ts-postgres": "^2.0.4"
+  }
+}

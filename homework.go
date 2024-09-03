@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -82,10 +84,6 @@ func saveInNoSqlDb() error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	results, err := getData(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	mongoConn, ok := os.LookupEnv("MONGODB_URI")
 	if !ok {
@@ -100,6 +98,20 @@ func saveInNoSqlDb() error {
 	}
 	log.Println("Connected to MongoDB!")
 	defer client.Disconnect(ctx)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-c
+		client.Disconnect(ctx)
+		cancel()
+		os.Exit(0)
+	}()
+
+	results, err := getData(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	collection := client.Database("stackx").Collection("users")
 	resultsAny := []any{}
@@ -119,10 +131,6 @@ func saveInSqlDb() error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	results, err := getData(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	cockroachConn, ok := os.LookupEnv("COCKROACHDB_URI")
 	if !ok {
@@ -135,6 +143,20 @@ func saveInSqlDb() error {
 		return err
 	}
 	defer conn.Close(ctx)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-c
+		conn.Close(ctx)
+		cancel()
+		os.Exit(0)
+	}()
+
+	results, err := getData(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	for _, r := range results.Results {
 		_, err := conn.Exec(ctx, "INSERT INTO users (name, email, dob, age) VALUES ($1, $2, $3, $4)", r.Name.First, r.Email, r.Dob.Date, r.Dob.Age)
