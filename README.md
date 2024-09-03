@@ -10,3 +10,4 @@ O Objetivo desta tarefa é criar uma interface web que consuma os dados da API h
 
 📌 Você deve tratar esses dados e enviar para um banco de dados próprio. Divirtam-se.
 
+A cada reload da página web o banco de dados é zerado, é feita nova carga de dados do randomuser e são exibidos os novos registros.
