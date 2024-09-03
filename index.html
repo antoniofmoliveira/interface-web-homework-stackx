@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="missing.min.css">
+    <title>Users from randomuser.me</title>
+</head>
+
+<body>
+    <div id="app">
+        <h1>Users from randomuser.me</h1>
+        <p>Reload the page to get more 10 users. The previous 10 users will be removed.</p>
+        <div id="users">
+            <ul>
+                {{ range . }}
+                <li>{{ .Name.First }} {{ .Name.Last }}</li>
+                <ul>
+                    <li>Email: {{ .Email }}</li>
+                    <li>Dob: {{ .Dob.Date }}</li>
+                    <li>Age: {{ .Dob.Age }}</li>
+                </ul>
+                {{ end }}
+            </ul>
+        </div>
+    </div>
+</body>
+
+</html>
